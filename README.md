@@ -22,6 +22,28 @@ Install Java XX and Maven XX.
 
 ## Diagrams
 
+### White Space Analysis
+
+```mermaid
+quadrantChart
+    title White Space Analysis
+    x-axis Lean Access --> Secure
+    y-axis Expensive --> Cheap / Open Source
+
+    quadrant-1 Secure and Cheap
+    quadrant-2 Quick Setup
+    quadrant-3 Wall of shame
+    quadrant-4 Enterprise solutions
+
+    Inventory Hub: [0.9, 0.9]
+    Sortly: [0.9, 0.4]
+    Inventree: [0.55, 0.99]
+    Jira Plugin: [0.9, 0.1]
+    Cin7: [0.95, 0.05]
+    monday.com: [0.45, 0.8]
+    StoreHub: [0.1, 0.4]
+```
+
 ### Registration Sequence Diagram
 
 ```mermaid
