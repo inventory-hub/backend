@@ -55,4 +55,5 @@ sequenceDiagram
         Email-->>+MQ: Return message to queue with N+1 retries
         deactivate MQ
     end
+    deactivate Email
 ```
