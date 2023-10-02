@@ -2,6 +2,24 @@
 
 Main backend for inventory hub application
 
+## Table of Contents
+
+- [Setup](#setup)
+  - [Docker](#docker)
+  - [Local Development](#local-development)
+- [Diagrams](#diagrams)
+  - [White Space Analysis](#white-space-analysis)
+  - [Registration Sequence Diagram](#registration-sequence-diagram)
+- [Api Documentation](#api-documentation)
+  - [/api/auth](#apiauth)
+    - /api/auth/login [[POST](#apiauthlogin-post)]
+    - /api/auth/invite [[POST](#apiauthinvite-post)]
+    - /api/auth/refresh [[POST](#apiauthrefresh-post)]
+    - /api/auth/register [[POST](#apiauthregister-post)]
+  - [/api/users](#apiusers)
+    - /api/users [[GET](#apiusers-get)]
+    - /api/users/:id [[GET](#apiusersid-get), [PUT](#apiusersid-put), [DELETE](#apiusersid-delete)]
+
 ## Setup
 
 ### Docker
@@ -19,3 +37,329 @@ Start the services with `docker-compose up -d` in the root directory.
 Install Java XX and Maven XX.
 
 ...WIP
+
+## Diagrams
+
+### White Space Analysis
+
+```mermaid
+quadrantChart
+    title White Space Analysis
+    x-axis Lean Access --> Secure
+    y-axis Expensive --> Cheap / Open Source
+
+    quadrant-1 Secure and Cheap
+    quadrant-2 Quick Setup
+    quadrant-3 Wall of shame
+    quadrant-4 Enterprise solutions
+
+    Inventory Hub: [0.9, 0.9]
+    Sortly: [0.9, 0.4]
+    Inventree: [0.55, 0.99]
+    Jira Plugin: [0.9, 0.1]
+    Cin7: [0.95, 0.05]
+    monday.com: [0.45, 0.8]
+    StoreHub: [0.1, 0.4]
+```
+
+### Registration Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    title Registration Workflow
+    actor Admin
+    participant Backend
+    participant MQ
+    participant Email as Email Microservice
+    participant Azure as Azure Communications
+    actor User
+
+    Admin->>+Backend: Register User Form
+    Backend->>Backend: Create Draft User
+    Backend-->>+MQ: Send User Created Event
+    Backend-->>-Admin: User Created Response
+    MQ-->>+Email: User Created Event
+    deactivate MQ
+    Email->>Email: Create email from template
+    Email->>+Azure: Send email
+    Azure-->>+User: Try to send email
+    loop
+        Azure->>Azure: Poll for status
+    end
+    deactivate User
+    Azure-->>-Email: Return email sent status
+    alt email sent
+        Email-->>+MQ: Confirm message as processed
+        deactivate MQ
+    else email failed
+        Email-->>+MQ: Return message to queue with N+1 retries
+        deactivate MQ
+    end
+    deactivate Email
+```
+
+## Api Documentation
+
+The namespace structure for the api is the following:
+
+```
+/api
+├── /auth
+│   ├── /login [POST]
+│   ├── /invite [POST]
+|   ├── /refresh [POST]
+│   └── /register [POST]
+├── /users
+│   ├── [GET]
+│   └── /:id [GET, PUT, DELETE]
+
+```
+
+### /api/auth
+
+#### /api/auth/login [POST]
+
+Login using credentials.
+
+Authorization: Anonymous
+
+Example payload:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "password"
+}
+```
+
+Example success response:
+
+```json
+{
+  "accessToken": "<jwt>",
+  "refreshToken": "<refreshToken>"
+}
+```
+
+Example error response (you can implement it differently if you want):
+
+```json
+{
+  "errors": {
+    "email": ["The email is not valid"]
+  }
+}
+```
+
+#### /api/auth/invite [POST]
+
+Invite a user to the application.
+
+Authorization: [Admin, Manager]
+
+Example payload:
+
+```json
+{
+  "email": "user@example.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "ReadonlyUser"
+}
+```
+
+Example success response: 201 Created (empty body)
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "role": ["The role 'Blatnoi' is not valid"]
+  }
+}
+```
+
+#### /api/auth/refresh [POST]
+
+Refresh JWT.
+
+Authorization: Anonymous
+
+Example payload:
+
+old JWT in the authorization header
+
+```json
+{
+  "refreshToken": "<refreshToken>"
+}
+```
+
+Example success response:
+
+```json
+{
+  "accessToken": "<jwt>",
+  "refreshToken": "<refreshToken>"
+}
+```
+
+#### /api/auth/register [POST]
+
+Register a draft user.
+
+Authorization: Anonymous
+
+Example payload:
+
+```json
+{
+  "token": "<invitationToken>",
+  "username": "tolya_perforator1996",
+  "password": "Tolya123!"
+}
+```
+
+Example success response: 201 Created
+
+```json
+{
+  "accessToken": "<jwt>",
+  "refreshToken": "<refreshToken>"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "token": ["The invitation token is not valid"]
+  }
+}
+```
+
+### /api/users
+
+#### /api/users [GET]
+
+Get the list of users with pagination, searching, maybe sorting (change the contract and add defaults) and minimal information required.
+
+Authorization: Authorized (results show inferiors and peers)
+
+Example query parameters:
+
+```yaml
+page: 1
+pageSize: 10
+search: "John"
+```
+
+Example success response:
+
+```json
+{
+  "users": [
+    {
+      "id": "<id>",
+      "firstName": "John",
+      "lastName": "Admin",
+      "role": "Admin"
+    },
+    {
+      "id": "<id>",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "ReadonlyUser"
+    }
+  ],
+  "totalPages": 1
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "page": ["The page must be a positive integer"]
+  }
+}
+```
+
+#### /api/users/:id [GET]
+
+Get the user by id.
+
+Authorization: Authorized (fails if the user is an inferior role)
+
+Example success response:
+
+```json
+{
+  "id": "<id>",
+  "firstName": "John",
+  "lastName": "Admin",
+  "role": "Admin",
+  "email": "john.admin@example.com"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"]
+  }
+}
+```
+
+#### /api/users/:id [PUT]
+
+Update the user by id.
+
+Authorization: Authorized (fails if the user is an inferior or equal role)
+
+Example payload:
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Admin",
+  "role": "Admin",
+  "email": "johnny.admin@example.com"
+}
+```
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"],
+    "role": ["The role 'BigBoss' is not valid"]
+  }
+}
+```
+
+#### /api/users/:id [DELETE]
+
+Delete the user by id.
+
+Authorization: Authorized (fails if the user is an inferior or equal role)
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"]
+  }
+}
+```
