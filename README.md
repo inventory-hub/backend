@@ -12,10 +12,13 @@ Main backend for inventory hub application
   - [Registration Sequence Diagram](#registration-sequence-diagram)
 - [Api Documentation](#api-documentation)
   - [/api/auth](#apiauth)
-    - [/api/auth/login [POST]](#apiauthlogin-post)
-    - [/api/auth/invite [POST]](#apiauthinvite-post)
-    - [/api/auth/refresh [POST]](#apiauthrefresh-post)
-    - [/api/auth/register [POST]](#apiauthregister-post)
+    - /api/auth/login [[POST](#apiauthlogin-post)]
+    - /api/auth/invite [[POST](#apiauthinvite-post)]
+    - /api/auth/refresh [[POST](#apiauthrefresh-post)]
+    - /api/auth/register [[POST](#apiauthregister-post)]
+  - [/api/users](#apiusers)
+    - /api/users [[GET](#apiusers-get)]
+    - /api/users/:id [[GET](#apiusersid-get), [PUT](#apiusersid-put), [DELETE](#apiusersid-delete)]
 
 ## Setup
 
@@ -107,6 +110,9 @@ The namespace structure for the api is the following:
 |   ├── /refresh [POST]
 │   └── /register [POST]
 ├── /users
+│   ├── [GET]
+│   └── /:id [GET, PUT, DELETE]
+
 ```
 
 ### /api/auth
@@ -230,6 +236,130 @@ Example error response:
 {
   "errors": {
     "token": ["The invitation token is not valid"]
+  }
+}
+```
+
+### /api/users
+
+#### /api/users [GET]
+
+Get the list of users with pagination, searching, maybe sorting (change the contract and add defaults) and minimal information required.
+
+Authorization: Authorized (results show inferiors and peers)
+
+Example query parameters:
+
+```yaml
+page: 1
+pageSize: 10
+search: "John"
+```
+
+Example success response:
+
+```json
+{
+  "users": [
+    {
+      "id": "<id>",
+      "firstName": "John",
+      "lastName": "Admin",
+      "role": "Admin"
+    },
+    {
+      "id": "<id>",
+      "firstName": "John",
+      "lastName": "Doe",
+      "role": "ReadonlyUser"
+    }
+  ],
+  "totalPages": 1
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "page": ["The page must be a positive integer"]
+  }
+}
+```
+
+#### /api/users/:id [GET]
+
+Get the user by id.
+
+Authorization: Authorized (fails if the user is an inferior role)
+
+Example success response:
+
+```json
+{
+  "id": "<id>",
+  "firstName": "John",
+  "lastName": "Admin",
+  "role": "Admin",
+  "email": "john.admin@example.com"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"]
+  }
+}
+```
+
+#### /api/users/:id [PUT]
+
+Update the user by id.
+
+Authorization: Authorized (fails if the user is an inferior or equal role)
+
+Example payload:
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Admin",
+  "role": "Admin",
+  "email": "johnny.admin@example.com"
+}
+```
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"],
+    "role": ["The role 'BigBoss' is not valid"]
+  }
+}
+```
+
+#### /api/users/:id [DELETE]
+
+Delete the user by id.
+
+Authorization: Authorized (fails if the user is an inferior or equal role)
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The user with id '<id>' does not exist"]
   }
 }
 ```
