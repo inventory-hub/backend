@@ -19,6 +19,13 @@ Main backend for inventory hub application
   - [/api/users](#apiusers)
     - /api/users [[GET](#apiusers-get)]
     - /api/users/:id [[GET](#apiusersid-get), [PUT](#apiusersid-put), [DELETE](#apiusersid-delete)]
+  - [/api/items/categories](#apiitemscategories)
+    - /api/items/categories [[GET](#apiitemscategories-get), [POST](#apiitemscategories-post)]
+    - /api/items/categories/:name [[DELETE](#apiitemscategoriesname-delete)]
+  - [/api/items](#apiitems)
+    - /api/items [[GET](#apiitems-get), [POST](#apiitems-post)]
+    - /api/items/:id [[GET](#apiitemsid-get), [PUT](#apiitemsid-put), [DELETE](#apiitemsid-delete)]
+    - /api/items/count/:id [[PATCH](#apiitemscountid-patch)]
 
 ## Setup
 
@@ -112,6 +119,13 @@ The namespace structure for the api is the following:
 ├── /users
 │   ├── [GET]
 │   └── /:id [GET, PUT, DELETE]
+├── /items
+|   ├── /categories
+│   │   ├── [GET, POST]
+│   │   └── /:name [DELETE]
+│   ├── [GET, POST]
+│   ├── /:id [GET, PUT, DELETE]
+│   └── /count/:id [PATCH]
 
 ```
 
@@ -360,6 +374,307 @@ Example error response:
 {
   "errors": {
     "id": ["The user with id '<id>' does not exist"]
+  }
+}
+```
+
+### /api/items/categories
+
+#### /api/items/categories [GET]
+
+Get the list of categories available.
+
+Authorization: Authorized
+
+Example success response:
+
+```json
+{
+  "categories": [
+    {
+      "name": "Electronics",
+      "itemCount": 10
+    },
+    {
+      "name": "Furniture",
+      "itemCount": 5
+    }
+  ]
+}
+```
+
+#### /api/items/categories [POST]
+
+Create a new category.
+
+Authorization: [Admin, Manager]
+
+Example payload:
+
+```json
+{
+  "name": "Electronics"
+}
+```
+
+Example success response: 201 Created (empty body)
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "name": ["The category with name 'Electronics' already exists"]
+  }
+}
+```
+
+#### /api/items/categories/:name [DELETE]
+
+Delete the category by name and all items in it.
+
+Authorization: [Admin, Manager]
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "name": ["The category with name 'Electronics' does not exist"]
+  }
+}
+```
+
+### /api/items
+
+#### /api/items [GET]
+
+Get the list of items with pagination, searching, filtering and maybe sorting (change the contract and add defaults).
+
+Authorization: Authorized
+
+Example query parameters:
+
+```yaml
+page: 1
+pageSize: 10
+search: "iPhone"
+category: "Electronics" # optional, defaults to all categories
+```
+
+Example success response:
+
+```json
+{
+  "items": [
+    {
+      "id": "<id>",
+      "name": "iPhone 12",
+      "category": "Electronics",
+      "quantity": 10,
+      "description": "Better than iPhone 11 (maybe)",
+      "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+      "createdAt": "2021-01-01T00:00:00.000Z",
+      "updatedAt": "2021-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "<id>",
+      "name": "iPhone 11",
+      "category": "Electronics",
+      "quantity": 5,
+      "imageUrl": null,
+      "description": "Better than iPhone 10",
+      "createdAt": "2021-01-01T00:00:00.000Z",
+      "updatedAt": "2021-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "page": ["The page must be a positive integer"],
+    "category": ["The category with name 'Electronics' does not exist"]
+  }
+}
+```
+
+#### /api/items [POST]
+
+Create a new item.
+
+Authorization: [Admin, Manager, User]
+
+Example payload (form data):
+
+```yml
+name: iPhone 12
+category: Electronics
+quantity: 10
+description: Better than iPhone 11 (maybe)
+image: <binary data> | null
+```
+
+> Note: if implementing form data is too difficult, use JSON instead and the image will be encoded in base64
+
+Example success response: 201 Created
+
+```json
+{
+  "id": "<id>",
+  "name": "iPhone 12",
+  "category": "Electronics",
+  "quantity": 10,
+  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "description": "Better than iPhone 11 (maybe)",
+  "createdAt": "2021-01-01T00:00:00.000Z",
+  "updatedAt": "2021-01-01T00:00:00.000Z"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "category": ["The category with name 'Electronics' does not exist"]
+  }
+}
+```
+
+#### /api/items/:id [GET]
+
+Get the item by id.
+
+Authorization: Authorized
+
+Example success response:
+
+```json
+{
+  "id": "<id>",
+  "name": "iPhone 12",
+  "category": "Electronics",
+  "quantity": 10,
+  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "description": "Better than iPhone 11 (maybe)",
+  "createdAt": "2021-01-01T00:00:00.000Z",
+  "updatedAt": "2021-01-01T00:00:00.000Z"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The item with id '<id>' does not exist"]
+  }
+}
+```
+
+#### /api/items/:id [PUT]
+
+Update the item by id.
+
+Authorization: [Admin, Manager, User]
+
+Example payload (form data):
+
+```yml
+name: iPhone 12
+category: Electronics
+quantity: 10
+description: Better than iPhone 11 (maybe)
+image: <binary data> | null
+```
+
+> Note: if implementing form data is too difficult, use JSON instead and the image will be encoded in base64
+
+Example success response: 200 OK
+
+```json
+{
+  "id": "<id>",
+  "name": "iPhone 12",
+  "category": "Electronics",
+  "quantity": 10,
+  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "description": "Better than iPhone 11 (maybe)",
+  "createdAt": "2021-01-01T00:00:00.000Z",
+  "updatedAt": "2023-01-01T00:00:00.000Z"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The item with id '<id>' does not exist"],
+    "category": ["The category with name 'Electronics' does not exist"]
+  }
+}
+```
+
+#### /api/items/:id [DELETE]
+
+Delete the item by id.
+
+Authorization: [Admin, Manager]
+
+Example success response: 204 No Content
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "id": ["The item with id '<id>' does not exist"]
+  }
+}
+```
+
+#### /api/items/count/:id [PATCH]
+
+Update the item quantity by id.
+
+Authorization: [Admin, Manager, User]
+
+Example payload:
+
+```json
+{
+  "quantity": 11
+}
+```
+
+Example success response: 200 OK
+
+```json
+{
+  "id": "<id>",
+  "name": "iPhone 12",
+  "category": "Electronics",
+  "quantity": 11,
+  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "description": "Better than iPhone 11 (maybe)",
+  "createdAt": "2021-01-01T00:00:00.000Z",
+  "updatedAt": "2023-01-01T00:00:00.000Z"
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "quantity": ["The quantity must be a positive integer"]
   }
 }
 ```
