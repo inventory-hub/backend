@@ -33,6 +33,8 @@ Main backend for inventory hub application
 
 ## Setup
 
+After cloning the repo, run `cp .env.example .env` in the root directory and fill in or replace the environment variables.
+
 ### Docker
 
 Install docker and docker-compose for your OS.

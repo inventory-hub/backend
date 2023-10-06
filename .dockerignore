@@ -41,4 +41,5 @@ _testmain.go
 *.test
 *.prof
 
-.env
+# should be
+# .env
