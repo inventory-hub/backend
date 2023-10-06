@@ -1,7 +1,7 @@
 package util
 
 import (
-	"Smart-Machine/inventory-hub-2/model"
+	"Smart-Machine/backend/src/model"
 	"fmt"
 	"net/http"
 

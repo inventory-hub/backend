@@ -1,7 +1,7 @@
 package model
 
 import (
-	"Smart-Machine/inventory-hub-2/database"
+	"Smart-Machine/backend/src/database"
 	"html"
 	"strings"
 

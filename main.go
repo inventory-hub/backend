@@ -1,9 +1,9 @@
 package main
 
 import (
-	"Smart-Machine/inventory-hub-2/controller"
-	"Smart-Machine/inventory-hub-2/database"
-	"Smart-Machine/inventory-hub-2/model"
+	"Smart-Machine/backend/src/controller"
+	"Smart-Machine/backend/src/database"
+	"Smart-Machine/backend/src/model"
 	"fmt"
 	"log"
 	"os"

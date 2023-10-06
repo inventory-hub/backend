@@ -1,4 +1,4 @@
-module Smart-Machine/inventory-hub-2
+module Smart-Machine/backend
 
 go 1.20
 

@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"Smart-Machine/inventory-hub-2/model"
-	"Smart-Machine/inventory-hub-2/util"
+	"Smart-Machine/backend/src/model"
+	"Smart-Machine/backend/src/util"
 	"errors"
 	"fmt"
 	"log"

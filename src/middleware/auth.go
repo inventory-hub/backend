@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"Smart-Machine/inventory-hub-2/util"
+	"Smart-Machine/backend/src/util"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

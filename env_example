@@ -1,0 +1,19 @@
+# Default application parameter
+PORT=
+
+# Database credentials
+DB_HOST=
+DB_DRIVER=
+DB_USER=
+DB_PASSWORD=
+DB_NAME=
+DB_PORT=
+
+# Default Admin User
+ADMIN_USERNAME=
+ADMIN_EMAIL=
+ADMIN_PASSWORD=
+
+# Authentication credentials
+TOKEN_TTL=
+JWT_PRIVATE_KEY=
