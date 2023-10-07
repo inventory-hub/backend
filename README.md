@@ -8,6 +8,7 @@ Main backend for inventory hub application
   - [Docker](#docker)
   - [Local Development](#local-development)
 - [Diagrams](#diagrams)
+  - [Architecture](#architecture)
   - [White Space Analysis](#white-space-analysis)
   - [Registration Sequence Diagram](#registration-sequence-diagram)
 - [Api Documentation](#api-documentation)
@@ -50,6 +51,10 @@ Install the go sdk.
 ...WIP
 
 ## Diagrams
+
+### Architecture
+
+![Architecture Diagram](./.github/diagrams/architecture.drawio.png)
 
 ### White Space Analysis
 
