@@ -39,15 +39,13 @@ After cloning the repo, run `cp .env.example .env` in the root directory and fil
 
 Install docker and docker-compose for your OS.
 
-To start the services, run `docker-compose up -d` in the root directory.
-
-To start the services and the backend, run `docker-compose --profile=server up -d --build` in the root directory.
+To start everything in production mode, run `docker-compose up -d --build` in the root directory.
 
 ### Local Development
 
-Start the services with `docker-compose up -d` in the root directory.
+Start the services with `docker-compose -f=compose-services.yml up -d` in the root directory. (or have them running locally / on cloud + change the env variables)
 
-Install Java XX and Maven XX.
+Install the go sdk.
 
 ...WIP
 
