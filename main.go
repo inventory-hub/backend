@@ -34,7 +34,7 @@ func loadDatabase() {
 	database.InitDB()
 	database.DB.AutoMigrate(&model.Role{})
 	database.DB.AutoMigrate(&model.User{})
-	// seedData()
+	seedData()
 }
 
 // load seed data into the database
@@ -60,6 +60,8 @@ func seedData() {
 
 func serveApplication() {
 	router := gin.Default()
+
+	router.GET("/api", controller.Welcome)
 
 	router.POST("/api/auth/login", controller.Login)
 	router.POST("/api/auth/refresh", controller.Refresh)

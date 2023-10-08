@@ -1,26 +1,30 @@
-FROM golang:1.20-alpine as builder
+FROM golang:alpine as builder
 
-WORKDIR /backend/
+# Install git.
+# Git is required for fetching the dependencies.
+RUN apk update && apk add --no-cache git 
+
+WORKDIR /app
 
 COPY go.* ./ 
 RUN go mod download
 
 COPY . . 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /backend/bin/app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main . 
 
 
 FROM alpine:latest
+RUN apk --no-cache add ca-certificates
 
-WORKDIR /backend/
+WORKDIR /root/
 
-COPY --from=builder /backend/bin/app /backend/bin/app
-COPY .env /backend/.env
+COPY --from=builder /app/main .
+COPY --from=builder /app/.env . 
 
 ENV GIN_MODE release
 EXPOSE 8000
 
-RUN chmod +x /backend/bin/app 
-ENTRYPOINT [ "/backend/bin/app" ]
+CMD ["./main"]
 
 
 

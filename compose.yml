@@ -2,6 +2,7 @@ version: "3"
 name: inventory-hub-backend
 
 volumes:
+  src:
   postgres-data:
   azurite-data:
 
@@ -10,20 +11,31 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: on-failure 
     depends_on:
-      - postgres
-      - azurite
-    restart: no
+      # fullstack-azurite:
+        # condition: service_healthy
+      fullstack-postgres:
+        condition: service_healthy
     ports:
       - 8000:8000
     env_file: .env
+    volumes:
+      - src:/usr/src/app/
+    networks:
+      - fullstack
 
-  postgres:
+  fullstack-postgres:
     extends:
       file: compose-base.yml
       service: postgres
 
-  azurite:
+  fullstack-azurite:
     extends:
       file: compose-base.yml
       service: azurite
+
+networks:
+  fullstack:
+    driver: bridge
+  

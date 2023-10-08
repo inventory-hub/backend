@@ -25,7 +25,7 @@ func connectDB() *gorm.DB {
 	port := os.Getenv("DB_PORT")
 
 	// TODO: Move sslmode and TimeZone as vars
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Europe/Chisinau", host, username, password, dbname, port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable", host, username, password, dbname, port)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Error connecting to database :", err)
