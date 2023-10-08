@@ -13,8 +13,8 @@ services:
       dockerfile: Dockerfile
     restart: on-failure 
     depends_on:
-      # fullstack-azurite:
-        # condition: service_healthy
+      fullstack-azurite:
+        condition: service_healthy
       fullstack-postgres:
         condition: service_healthy
     ports:

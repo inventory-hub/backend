@@ -7,5 +7,5 @@ import (
 )
 
 func Welcome(context *gin.Context) {
-	context.JSON{http.StatusOK, gin.H{"message": "Welcome to Inventory Hub API"}}
+	context.JSON(http.StatusOK, "Welcome to the Inventory Hub API")
 }
