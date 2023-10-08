@@ -1,4 +1,4 @@
-package util
+package auth
 
 import (
 	"Smart-Machine/backend/src/model"
@@ -30,6 +30,16 @@ func GenerateJWT(user model.User) (string, error) {
 
 // generate JWT refresh token
 func GenerateRefreshJWT(user model.User) (string, error) {
+	tokenTTL, _ := strconv.Atoi(os.Getenv("TOKEN_TTL"))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":  user.ID,
+		"eat": time.Now().Add(time.Minute * time.Duration(tokenTTL)).Unix(),
+	})
+	return token.SignedString(privateKey)
+}
+
+// generate JWT for invite
+func GenerateInviteJWT(user model.DraftUser) (string, error) {
 	tokenTTL, _ := strconv.Atoi(os.Getenv("TOKEN_TTL"))
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":  user.ID,
@@ -105,12 +115,12 @@ func CurrentUser(param interface{}) model.User {
 			return model.User{}
 		}
 		token, _ = getToken(param.(*gin.Context))
-	case model.Refresh:
-		err = ValidateJWT(param.(model.Refresh))
+	case model.RefreshPayload:
+		err = ValidateJWT(param.(model.RefreshPayload))
 		if err != nil {
 			return model.User{}
 		}
-		token, _ = getToken(param.(model.Refresh))
+		token, _ = getToken(param.(model.RefreshPayload))
 	}
 
 	claims, _ := token.Claims.(jwt.MapClaims)
@@ -130,8 +140,8 @@ func getToken(param interface{}) (*jwt.Token, error) {
 	switch param.(type) {
 	case *gin.Context:
 		tokenString = getTokenFromRequest(param.(*gin.Context))
-	case model.Refresh:
-		tokenString = param.(model.Refresh).RefreshToken
+	case model.RefreshPayload:
+		tokenString = param.(model.RefreshPayload).RefreshToken
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

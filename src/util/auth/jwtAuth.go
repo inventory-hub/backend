@@ -1,8 +1,6 @@
-package util
+package auth
 
 import (
-	"Smart-Machine/backend/src/model"
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -63,19 +61,4 @@ func JWTAuthCustomer() gin.HandlerFunc {
 		}
 		context.Next()
 	}
-}
-
-func VerifyRoleInList(context *gin.Context, roleList []uint) error {
-	var user model.User
-
-	if user = CurrentUser(context); user == (model.User{}) {
-		return fmt.Errorf("no such user with the provided token")
-	}
-
-	for i := 0; i < len(roleList); i++ {
-		if user.ID == roleList[i] {
-			return nil
-		}
-	}
-	return fmt.Errorf("current action is not allowed for this role")
 }

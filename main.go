@@ -3,7 +3,9 @@ package main
 import (
 	"Smart-Machine/backend/src/controller"
 	"Smart-Machine/backend/src/database"
+	"Smart-Machine/backend/src/middleware"
 	"Smart-Machine/backend/src/model"
+	"Smart-Machine/backend/src/util/msgqueue"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +20,8 @@ func main() {
 	loadEnv()
 	// load database configuration and connection
 	loadDatabase()
+	// load service configuration and connection
+	loadService()
 	// start the server
 	serveApplication()
 }
@@ -34,7 +38,15 @@ func loadDatabase() {
 	database.InitDB()
 	database.DB.AutoMigrate(&model.Role{})
 	database.DB.AutoMigrate(&model.User{})
+	database.DB.AutoMigrate(&model.DraftUser{})
 	seedData()
+}
+
+func loadService() {
+	// Connect to Azure Storage Queue
+	msgqueue.GetServiceClient(os.Getenv("AZURE_QUEUE_CONNECTION_STRING"))
+	msgqueue.GetQueueClient(os.Getenv("AZURE_QUEUE_NAME"))
+	log.Println(msgqueue.QueueClient.URL())
 }
 
 // load seed data into the database
@@ -65,8 +77,8 @@ func serveApplication() {
 
 	router.POST("/api/auth/login", controller.Login)
 	router.POST("/api/auth/refresh", controller.Refresh)
+	router.POST("/api/auth/invite", middleware.ValidateAuthorization(middleware.AuthorizedRoles), controller.Invite)
 	// router.POST("/api/auth/register", controller.Register)
-	// router.POST("/api/auth/invite", middleware.ValidateAuthorization(middleware.AuthorizedRoles), controller.Invite)
 
 	// router.GET("/api/users", middleware.ValidateAuthorization(middleware.AllRoles), controller.GetListOfUsers)
 	// router.GET("/api/users/:id", middleware.ValidateAuthorization(middleware.AllRoles), controller.GetUserById)

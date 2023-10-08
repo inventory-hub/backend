@@ -2,18 +2,21 @@ package controller
 
 import (
 	"Smart-Machine/backend/src/model"
-	"Smart-Machine/backend/src/util"
+	"Smart-Machine/backend/src/util/auth"
+	"Smart-Machine/backend/src/util/msgqueue"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 func Login(context *gin.Context) {
-	var input model.Login
+	var input model.LoginPayload
 	var err error
 
 	if err = context.ShouldBindJSON(&input); err != nil {
@@ -46,13 +49,13 @@ func Login(context *gin.Context) {
 		return
 	}
 
-	jwtToken, err := util.GenerateJWT(user)
+	jwtToken, err := auth.GenerateJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	refreshToken, err := util.GenerateRefreshJWT(user)
+	refreshToken, err := auth.GenerateRefreshJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -62,7 +65,7 @@ func Login(context *gin.Context) {
 }
 
 func Refresh(context *gin.Context) {
-	var input model.Refresh
+	var input model.RefreshPayload
 	var user model.User
 
 	if err := context.ShouldBindJSON(&input); err != nil {
@@ -70,24 +73,74 @@ func Refresh(context *gin.Context) {
 		return
 	}
 
-	if user = util.CurrentUser(input); user == (model.User{}) {
+	if user = auth.CurrentUser(input); user == (model.User{}) {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "No such user with the provided token"})
 		return
 	}
 
-	jwtToken, err := util.GenerateJWT(user)
+	jwtToken, err := auth.GenerateJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	refreshToken, err := util.GenerateRefreshJWT(user)
+	refreshToken, err := auth.GenerateRefreshJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	context.JSON(http.StatusOK, gin.H{"accessToken": jwtToken, "refreshToken": refreshToken})
+}
+
+func Invite(context *gin.Context) {
+	var input model.DraftUserPayload
+	var user model.DraftUser
+
+	if err := context.ShouldBindJSON(&input); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	roleId, err := strconv.Atoi(input.RoleID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	user = model.DraftUser{
+		Email:    input.Email,
+		Username: input.Username,
+		Password: input.Password,
+		RoleID:   uint(roleId),
+	}
+
+	inviteToken, err := auth.GenerateInviteJWT(user)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	user.InviteToken = inviteToken
+
+	_, err = user.Save()
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	message := msgqueue.Message{
+		To:          input.Email,
+		Username:    input.Username,
+		InviteToken: inviteToken,
+		CallbackURL: "https://inventory-hub.space/sign-up",
+	}
+	encodedMessage, err := json.Marshal(message)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	msgqueue.QueueClientEnqueueMessage(string(encodedMessage))
+
+	context.JSON(http.StatusCreated, gin.H{})
 }
 
 func GetListOfUsers(context *gin.Context) {
@@ -104,7 +157,7 @@ func GetListOfUsers(context *gin.Context) {
 	}
 	log.Print(users)
 
-	user := util.CurrentUser(context)
+	user := auth.CurrentUser(context)
 	if user == (model.User{}) {
 		context.JSON(http.StatusUnauthorized, gin.H{"error": "Authorized user not found."})
 		return
