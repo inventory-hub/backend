@@ -4,6 +4,7 @@ import (
 	"Smart-Machine/backend/src/model"
 	"Smart-Machine/backend/src/util/auth"
 	"Smart-Machine/backend/src/util/msgqueue"
+	"Smart-Machine/backend/src/util/random"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -49,13 +50,13 @@ func Login(context *gin.Context) {
 		return
 	}
 
-	jwtToken, err := auth.GenerateJWT(user)
+	jwtToken, err := auth.GenerateBasicJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	refreshToken, err := auth.GenerateRefreshJWT(user)
+	refreshToken, err := auth.GenerateTimeoutJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,13 +79,13 @@ func Refresh(context *gin.Context) {
 		return
 	}
 
-	jwtToken, err := auth.GenerateJWT(user)
+	jwtToken, err := auth.GenerateBasicJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	refreshToken, err := auth.GenerateRefreshJWT(user)
+	refreshToken, err := auth.GenerateTimeoutJWT(user)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -114,7 +115,7 @@ func Invite(context *gin.Context) {
 		RoleID:   uint(roleId),
 	}
 
-	inviteToken, err := auth.GenerateInviteJWT(user)
+	inviteToken, err := random.PseudoUUID()
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -143,25 +144,25 @@ func Invite(context *gin.Context) {
 	context.JSON(http.StatusCreated, gin.H{})
 }
 
-func GetListOfUsers(context *gin.Context) {
-	var users *[]model.User
-	page := context.Query("page")
-	// pageSize := context.Query("pageSize")
-	search := context.Query("search")
-	log.Print(search)
+// func GetListOfUsers(context *gin.Context) {
+// 	var users *[]model.User
+// 	page := context.Query("page")
+// 	// pageSize := context.Query("pageSize")
+// 	search := context.Query("search")
+// 	log.Print(search)
 
-	users, err := model.GetUsersWithParam(search)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
-		return
-	}
-	log.Print(users)
+// 	users, err := model.GetUsersWithParam(search)
+// 	if err != nil {
+// 		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
+// 		return
+// 	}
+// 	log.Print(users)
 
-	user := auth.CurrentUser(context)
-	if user == (model.User{}) {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "Authorized user not found."})
-		return
-	}
+// 	user := auth.CurrentUser(context)
+// 	if user == (model.User{}) {
+// 		context.JSON(http.StatusUnauthorized, gin.H{"error": "Authorized user not found."})
+// 		return
+// 	}
 
-	context.JSON(http.StatusOK, gin.H{"users": users, "totalPages": page})
-}
+// 	context.JSON(http.StatusOK, gin.H{"users": users, "totalPages": page})
+// }
