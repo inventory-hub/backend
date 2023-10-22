@@ -11,12 +11,14 @@ import (
 
 type User struct {
 	gorm.Model
-	ID       uint   `gorm:"primary_key"`
-	RoleID   uint   `gorm:"not null;DEFAULT:3" json:"roleId"`
-	Username string `gorm:"size:255;not null;" json:"username"`
-	Email    string `gorm:"size:255;not null;unique" json:"email"`
-	Password string `gorm:"size:255;not null" json:"-"`
-	Role     Role   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	ID        uint   `gorm:"primary_key"`
+	RoleID    uint   `gorm:"not null;DEFAULT:3" json:"roleId"`
+	FirstName string `gorm:"size:255;not null;" json:"firstName"`
+	LastName  string `gorm:"size:255;not null;" json:"lastName"`
+	Username  string `gorm:"size:255;not null;" json:"username"`
+	Email     string `gorm:"size:255;not null;unique" json:"email"`
+	Password  string `gorm:"size:255;not null" json:"-"`
+	Role      Role   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (user *User) Save() (*User, error) {

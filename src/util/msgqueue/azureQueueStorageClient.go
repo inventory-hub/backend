@@ -14,7 +14,7 @@ var (
 
 type Message struct {
 	To          string `json:"to"`
-	Username    string `json:"fullName"`
+	FullName    string `json:"fullName"`
 	InviteToken string `json:"token"`
 	CallbackURL string `json:"callbackUrl"`
 }

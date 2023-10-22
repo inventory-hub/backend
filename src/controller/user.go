@@ -109,10 +109,10 @@ func Invite(context *gin.Context) {
 	}
 
 	user = model.DraftUser{
-		Email:    input.Email,
-		Username: input.Username,
-		Password: input.Password,
-		RoleID:   uint(roleId),
+		Email:     input.Email,
+		FirstName: input.FirstName,
+		LastName:  input.LastName,
+		RoleID:    uint(roleId),
 	}
 
 	inviteToken, err := random.PseudoUUID()
@@ -124,13 +124,13 @@ func Invite(context *gin.Context) {
 
 	_, err = user.Save()
 	if err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	message := msgqueue.Message{
 		To:          input.Email,
-		Username:    input.Username,
+		FullName:    fmt.Sprintf("%s %s", input.FirstName, input.LastName),
 		InviteToken: inviteToken,
 		CallbackURL: "https://inventory-hub.space/sign-up",
 	}
@@ -144,25 +144,43 @@ func Invite(context *gin.Context) {
 	context.JSON(http.StatusCreated, gin.H{})
 }
 
-// func GetListOfUsers(context *gin.Context) {
-// 	var users *[]model.User
-// 	page := context.Query("page")
-// 	// pageSize := context.Query("pageSize")
-// 	search := context.Query("search")
-// 	log.Print(search)
+func Register(context *gin.Context) {
+	var input model.RegisterPayload
 
-// 	users, err := model.GetUsersWithParam(search)
-// 	if err != nil {
-// 		context.JSON(http.StatusInternalServerError, gin.H{"error": err})
-// 		return
-// 	}
-// 	log.Print(users)
+	if err := context.ShouldBindJSON(&input); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-// 	user := auth.CurrentUser(context)
-// 	if user == (model.User{}) {
-// 		context.JSON(http.StatusUnauthorized, gin.H{"error": "Authorized user not found."})
-// 		return
-// 	}
+	draftUser, err := model.GetDraftUserByInvitationToken(input.InviteToken)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
 
-// 	context.JSON(http.StatusOK, gin.H{"users": users, "totalPages": page})
-// }
+	user := model.User{
+		RoleID:    draftUser.RoleID,
+		FirstName: draftUser.FirstName,
+		LastName:  draftUser.LastName,
+		Username:  input.Username,
+		Email:     draftUser.Email,
+		Password:  input.Password,
+	}
+	_, err = user.Save()
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	jwtToken, err := auth.GenerateBasicJWT(user)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	refreshToken, err := auth.GenerateTimeoutJWT(user)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"accessToken": jwtToken, "refreshToken": refreshToken})
+}

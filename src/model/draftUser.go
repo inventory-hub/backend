@@ -10,16 +10,18 @@ import (
 )
 
 type DraftUserPayload struct {
-	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	RoleID   string `json:"role" binding:"required"`
+	Email     string `json:"email" binding:"required,email"`
+	FirstName string `json:"firstName" binding:"required"`
+	LastName  string `json:"lastName" binding:"required"`
+	RoleID    string `json:"role" binding:"required"`
 }
 
 type DraftUser struct {
 	gorm.Model
 	ID          uint   `gorm:"primary_key"`
 	RoleID      uint   `gorm:"not null;DEFAULT:3" json:"roleId"`
+	FirstName   string `gorm:"size:255;not null;" json:"firstName"`
+	LastName    string `gorm:"size:255;not null;" json:"lastName"`
 	Username    string `gorm:"size:255;not null;" json:"username"`
 	Email       string `gorm:"size:255;not null;unique" json:"email"`
 	Password    string `gorm:"size:255;not null" json:"-"`
@@ -45,4 +47,15 @@ func (user *DraftUser) BeforeSave(*gorm.DB) error {
 	user.Username = html.EscapeString(strings.TrimSpace(user.Username))
 
 	return nil
+}
+
+func GetDraftUserByInvitationToken(inviteToken string) (DraftUser, error) {
+	var draftUser DraftUser
+
+	err := database.DB.Where("invite_token = ?", inviteToken).Find(&draftUser).Error
+	if err != nil {
+		return DraftUser{}, err
+	}
+
+	return draftUser, nil
 }
