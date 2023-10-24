@@ -11,6 +11,7 @@ Main backend for inventory hub application
   - [Architecture](#architecture)
   - [White Space Analysis](#white-space-analysis)
   - [Registration Sequence Diagram](#registration-sequence-diagram)
+  - [Order State Machine](#order-state-machine)
 - [Api Documentation](#api-documentation)
   - [/api/auth](#apiauth)
     - /api/auth/login [[POST](#apiauthlogin-post)]
@@ -20,17 +21,17 @@ Main backend for inventory hub application
   - [/api/users](#apiusers)
     - /api/users [[GET](#apiusers-get)]
     - /api/users/:id [[GET](#apiusersid-get), [PUT](#apiusersid-put), [DELETE](#apiusersid-delete)]
-  - [/api/items/categories](#apiitemscategories)
-    - /api/items/categories [[GET](#apiitemscategories-get), [POST](#apiitemscategories-post)]
-    - /api/items/categories/:name [[DELETE](#apiitemscategoriesname-delete)]
-  - [/api/items](#apiitems)
-    - /api/items [[GET](#apiitems-get), [POST](#apiitems-post)]
-    - /api/items/:id [[GET](#apiitemsid-get), [PUT](#apiitemsid-put), [DELETE](#apiitemsid-delete)]
-    - /api/items/count/:id [[PATCH](#apiitemscountid-patch)]
-  - [/api/items/transactions](#apiitemstransactions)
-    - /api/items/transactions [[GET](#apiitemstransactions-get), [POST](#apiitemstransactions-post)]
-    - /api/items/transactions/:id [[PUT](#apiitemstransactionsid-put), [DELETE](#apiitemstransactionsid-delete)]
-    - /api/items/transactions/state/:id [[PATCH](#apiitemstransactionsstateid-patch)]
+  - [/api/categories](#apicategories)
+    - /api/categories [[GET](#apicategories-get), [POST](#apicategories-post)]
+    - /api/categories/:name [[DELETE](#apicategoriesname-delete)]
+  - [/api/products](#apiproducts)
+    - /api/products [[GET](#apiproducts-get), [POST](#apiproducts-post)]
+    - /api/products/:id [[GET](#apiproductsid-get), [PUT](#apiproductsid-put), [DELETE](#apiproductsid-delete)]
+  - [/api/products/orders](#apiproductsorders)
+    - [order states](#order-states)
+    - /api/products/orders [[GET](#apiproductsorders-get), [POST](#apiproductsorders-post)]
+    - /api/products/orders/:id [[GET](#apiproductsordersid-get) [PUT](#apiproductsordersid-put), [DELETE](#apiproductsordersid-delete)]
+    - /api/products/orders/:id/state [[PATCH](#apiproductsordersidstate-patch)]
 
 ## Setup
 
@@ -114,6 +115,24 @@ sequenceDiagram
     deactivate Email
 ```
 
+### Order State Machine
+
+```mermaid
+stateDiagram-v2
+    state Choice <<choice>>
+    [*] --> Pending
+    note right of Pending
+      Order is waiting approval
+    end note
+    Pending --> Ready : decrease item quantity [manger/admin approval]
+    Pending --> Cancelled : [manager/admin/user rejection]
+    Ready --> Choice
+    Choice --> Completed : complete order [enough quantity]
+    Choice --> Cancelled : cancel order, increase item quantity
+    Cancelled --> [*]
+    Completed --> [*]
+```
+
 ## Api Documentation
 
 The namespace structure for the api is the following:
@@ -128,16 +147,16 @@ The namespace structure for the api is the following:
 ├── /users
 │   ├── [GET]
 │   └── /:id [GET, PUT, DELETE]
-├── /items
+├── /products
 |   ├── /categories
 │   │   ├── [GET, POST]
 │   │   └── /:name [DELETE]
-|   ├── /transactions
+|   ├── /orders
 │   │   ├── [GET, POST]
 │   │   └── /state/:id [PATCH]
 │   ├── [GET, POST]
 │   ├── /:id [GET, PUT, DELETE]
-│   └── /count/:id [PATCH]
+│   └── /quantity/:id [PATCH]
 
 ```
 
@@ -390,9 +409,9 @@ Example error response:
 }
 ```
 
-### /api/items/categories
+### /api/categories
 
-#### /api/items/categories [GET]
+#### /api/categories [GET]
 
 Get the list of categories available.
 
@@ -404,18 +423,20 @@ Example success response:
 {
   "categories": [
     {
+      "id": "<id>",
       "name": "Electronics",
-      "itemCount": 10
+      "itemquantity": 10
     },
     {
+      "id": "<id>",
       "name": "Furniture",
-      "itemCount": 5
+      "itemquantity": 5
     }
   ]
 }
 ```
 
-#### /api/items/categories [POST]
+#### /api/products/categories [POST]
 
 Create a new category.
 
@@ -429,7 +450,14 @@ Example payload:
 }
 ```
 
-Example success response: 201 Created (empty body)
+Example success response: 201 Created
+
+```json
+{
+  "id": "<id>",
+  "name": "Electronics"
+}
+```
 
 Example error response:
 
@@ -441,9 +469,9 @@ Example error response:
 }
 ```
 
-#### /api/items/categories/:name [DELETE]
+#### /api/products/categories/:name [DELETE]
 
-Delete the category by name and all items in it.
+Delete the category by name and all products in it.
 
 Authorization: [Admin, Manager]
 
@@ -459,11 +487,11 @@ Example error response:
 }
 ```
 
-### /api/items
+### /api/products
 
-#### /api/items [GET]
+#### /api/products [GET]
 
-Get the list of items with pagination, searching, filtering and maybe sorting (change the contract and add defaults).
+Get the list of products with pagination, searching, filtering and maybe sorting (change the contract and add defaults).
 
 Authorization: Authorized
 
@@ -478,19 +506,16 @@ category: "Electronics" # optional, defaults to all categories
 
 Example success response:
 
-> Note: decide if lockedQuantity should be normalized or de-normalized in the DB
-
 ```json
 {
-  "items": [
+  "products": [
     {
       "id": "<id>",
       "name": "iPhone 12",
       "category": "Electronics",
       "quantity": 10,
-      "lockedQuantity": 0,
       "description": "Better than iPhone 11 (maybe)",
-      "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+      "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
       "createdAt": "2021-01-01T00:00:00.000Z",
       "updatedAt": "2021-01-01T00:00:00.000Z"
     },
@@ -499,7 +524,6 @@ Example success response:
       "name": "iPhone 11",
       "category": "Electronics",
       "quantity": 5,
-      "lockedQuantity": 1,
       "imageUrl": null,
       "description": "Better than iPhone 10",
       "createdAt": "2021-01-01T00:00:00.000Z",
@@ -520,7 +544,7 @@ Example error response:
 }
 ```
 
-#### /api/items [POST]
+#### /api/products [POST]
 
 Create a new item.
 
@@ -546,8 +570,7 @@ Example success response: 201 Created
   "name": "iPhone 12",
   "category": "Electronics",
   "quantity": 10,
-  "lockedQuantity": 0,
-  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
   "description": "Better than iPhone 11 (maybe)",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2021-01-01T00:00:00.000Z"
@@ -564,7 +587,7 @@ Example error response:
 }
 ```
 
-#### /api/items/:id [GET]
+#### /api/products/:id [GET]
 
 Get the item by id.
 
@@ -578,8 +601,7 @@ Example success response:
   "name": "iPhone 12",
   "category": "Electronics",
   "quantity": 10,
-  "lockedQuantity": 0,
-  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
   "description": "Better than iPhone 11 (maybe)",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2021-01-01T00:00:00.000Z"
@@ -596,7 +618,7 @@ Example error response:
 }
 ```
 
-#### /api/items/:id [PUT]
+#### /api/products/:id [PUT]
 
 Update the item by id.
 
@@ -622,8 +644,7 @@ Example success response: 200 OK
   "name": "iPhone 12",
   "category": "Electronics",
   "quantity": 10,
-  "lockedQuantity": 0,
-  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+  "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
   "description": "Better than iPhone 11 (maybe)",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2023-01-01T00:00:00.000Z"
@@ -641,7 +662,7 @@ Example error response:
 }
 ```
 
-#### /api/items/:id [DELETE]
+#### /api/products/:id [DELETE]
 
 Delete the item by id.
 
@@ -659,50 +680,11 @@ Example error response:
 }
 ```
 
-#### /api/items/count/:id [PATCH]
+### /api/products/orders
 
-Update the item quantity by id.
+#### /api/products/orders [GET]
 
-Authorization: [Admin, Manager, User]
-
-Example payload:
-
-```json
-{
-  "quantity": 11
-}
-```
-
-Example success response: 200 OK
-
-```json
-{
-  "id": "<id>",
-  "name": "iPhone 12",
-  "category": "Electronics",
-  "quantity": 11,
-  "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
-  "description": "Better than iPhone 11 (maybe)",
-  "createdAt": "2021-01-01T00:00:00.000Z",
-  "updatedAt": "2023-01-01T00:00:00.000Z"
-}
-```
-
-Example error response:
-
-```json
-{
-  "errors": {
-    "quantity": ["The quantity must be a positive integer"]
-  }
-}
-```
-
-### /api/items/transactions
-
-#### /api/items/transactions [GET]
-
-Get the list of transactions with pagination, searching, filtering and maybe sorting (change the contract and add defaults).
+Get the list of orders with limited information with pagination, searching, filtering and maybe sorting (change the contract and add defaults).
 
 Authorization: Authorized
 
@@ -719,45 +701,33 @@ Example success response:
 
 ```json
 {
-  "transactions": [
+  "orders": [
     {
       "id": "<transactionId>",
       "client": "John Doe Enterprises",
       "description": "Will buy 5 IPhones in lease",
-      "count": 5,
+      "quantity": 5,
       "state": "Draft",
       "createdAt": "2021-01-01T00:00:00.000Z",
       "updatedAt": "2021-01-01T00:00:00.000Z",
       "item": {
-        "id": "<itemId>",
         "name": "iPhone 12",
         "category": "Electronics",
-        "quantity": 10,
-        "lockedQuantity": 0,
-        "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
-        "description": "Better than iPhone 11 (maybe)",
-        "createdAt": "2021-01-01T00:00:00.000Z",
-        "updatedAt": "2021-01-01T00:00:00.000Z"
+        "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png"
       }
     },
     {
       "id": "<transactionId>",
       "client": "Main Office Floor 4",
       "description": "",
-      "count": 12,
+      "quantity": 12,
       "state": "Pending",
       "createdAt": "2021-01-01T00:00:00.000Z",
       "updatedAt": "2021-02-01T00:00:00.000Z",
       "item": {
-        "id": "<itemId>",
         "name": "Toilet Paper",
         "category": "Hygiene",
-        "quantity": 100,
-        "lockedQuantity": 12,
-        "imageUrl": null,
-        "description": "",
-        "createdAt": "2021-01-01T00:00:00.000Z",
-        "updatedAt": "2021-02-01T00:00:00.000Z"
+        "quantity": 100
       }
     }
   ],
@@ -775,7 +745,7 @@ Example error response:
 }
 ```
 
-#### /api/items/transactions [POST]
+#### /api/products/orders [POST]
 
 Create a new transaction.
 
@@ -788,7 +758,7 @@ Example payload:
   "itemId": "<itemId>",
   "client": "John Doe Enterprises",
   "description": "Will buy 5 IPhones in lease",
-  "count": 5,
+  "quantity": 5,
   "initialState": "Pending"
 }
 ```
@@ -800,17 +770,15 @@ Example success response:
   "id": "<transactionId>",
   "client": "John Doe Enterprises",
   "description": "Will buy 5 IPhones in lease",
-  "count": 5,
+  "quantity": 5,
   "state": "Pending",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2021-01-01T00:00:00.000Z",
   "item": {
     "id": "<itemId>",
-    "name": "iPhone 12",
     "category": "Electronics",
     "quantity": 10,
-    "lockedQuantity": 5,
-    "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+    "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
     "description": "Better than iPhone 11 (maybe)",
     "createdAt": "2021-01-01T00:00:00.000Z",
     "updatedAt": "2021-01-01T00:00:00.000Z"
@@ -828,30 +796,20 @@ Example error response:
 }
 ```
 
-#### /api/items/transactions/:id [PUT]
+#### /api/products/orders/:id [GET]
 
-Update the transaction by id.
+Get the transaction by id with all the information.
 
-Authorization: [Admin, Manager]
+Authorization: [Admin, Manager, User]
 
-Example payload:
-
-```json
-{
-  "client": "John Doe Enterprises Incorporated",
-  "description": "Will buy 5 IPhones in lease",
-  "count": 6
-}
-```
-
-Example response:
+Example success response:
 
 ```json
 {
   "id": "<transactionId>",
   "client": "John Doe Enterprises Incorporated",
   "description": "Will buy 5 IPhones in lease",
-  "count": 6,
+  "quantity": 6,
   "state": "Pending",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2021-01-01T00:00:00.000Z",
@@ -860,8 +818,7 @@ Example response:
     "name": "iPhone 12",
     "category": "Electronics",
     "quantity": 10,
-    "lockedQuantity": 6,
-    "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+    "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
     "description": "Better than iPhone 11 (maybe)",
     "createdAt": "2021-01-01T00:00:00.000Z",
     "updatedAt": "2021-01-01T00:00:00.000Z"
@@ -874,16 +831,66 @@ Example error response:
 ```json
 {
   "errors": {
-    "count": [
-      "You specified the count 11, but the item 'iPhone 12' has only 10 unit(s) available"
+    "id": ["The transaction with id '<transactionId>' does not exist"]
+  }
+}
+```
+
+#### /api/products/orders/:id [PUT]
+
+Update the transaction by id.
+
+Authorization: [Admin, Manager]
+
+Example payload:
+
+```json
+{
+  "client": "John Doe Enterprises Incorporated",
+  "description": "Will buy 5 IPhones in lease",
+  "quantity": 6
+}
+```
+
+Example response:
+
+```json
+{
+  "id": "<transactionId>",
+  "client": "John Doe Enterprises Incorporated",
+  "description": "Will buy 5 IPhones in lease",
+  "quantity": 6,
+  "state": "Pending",
+  "createdAt": "2021-01-01T00:00:00.000Z",
+  "updatedAt": "2021-01-01T00:00:00.000Z",
+  "item": {
+    "id": "<itemId>",
+    "name": "iPhone 12",
+    "category": "Electronics",
+    "quantity": 10,
+    "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
+    "description": "Better than iPhone 11 (maybe)",
+    "createdAt": "2021-01-01T00:00:00.000Z",
+    "updatedAt": "2021-01-01T00:00:00.000Z"
+  }
+}
+```
+
+Example error response:
+
+```json
+{
+  "errors": {
+    "quantity": [
+      "You specified the quantity 11, but the item 'iPhone 12' has only 10 unit(s) available"
     ]
   }
 }
 ```
 
-#### /api/items/transactions/:id [DELETE]
+#### /api/products/orders/:id [DELETE]
 
-Delete the transaction by id. Transactions should not be deleted, to be kept for historic record, but admins can still do that.
+Delete the transaction by id. orders should not be deleted, to be kept for historic record, but admins can still do that.
 
 Authorization: [Admin]
 
@@ -891,7 +898,7 @@ Example success response: 204 No Content
 
 Example error response: 401 Unauthorized
 
-#### /api/items/transactions/state/:id [PATCH]
+#### /api/products/orders/:id/state [PATCH]
 
 Update the transaction state by id.
 
@@ -912,7 +919,7 @@ Example success response:
   "id": "<transactionId>",
   "client": "John Doe Enterprises Incorporated",
   "description": "Will buy 5 IPhones in lease",
-  "count": 6,
+  "quantity": 6,
   "state": "Completed",
   "createdAt": "2021-01-01T00:00:00.000Z",
   "updatedAt": "2021-01-01T00:00:00.000Z",
@@ -921,8 +928,7 @@ Example success response:
     "name": "iPhone 12",
     "category": "Electronics",
     "quantity": 4,
-    "lockedQuantity": 0,
-    "imageUrl": "cdn.inventory-hub.space/uploads/items/iPhone12-<id>.png",
+    "imageUrl": "cdn.inventory-hub.space/uploads/products/iPhone12-<id>.png",
     "description": "Better than iPhone 11 (maybe)",
     "createdAt": "2021-01-01T00:00:00.000Z",
     "updatedAt": "2021-01-01T00:00:00.000Z"
