@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 )
 
 func Login(context *gin.Context) {
@@ -40,6 +41,11 @@ func Login(context *gin.Context) {
 
 	user, err := model.GetUserByEmail(input.Email)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -106,6 +112,7 @@ func Invite(context *gin.Context) {
 	roleId, err := strconv.Atoi(input.RoleID)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	user = model.DraftUser{
@@ -154,7 +161,13 @@ func Register(context *gin.Context) {
 
 	draftUser, err := model.GetDraftUserByInvitationToken(input.InviteToken)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	user := model.User{
@@ -168,6 +181,7 @@ func Register(context *gin.Context) {
 	_, err = user.Save()
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	jwtToken, err := auth.GenerateBasicJWT(user)
@@ -183,4 +197,175 @@ func Register(context *gin.Context) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{"accessToken": jwtToken, "refreshToken": refreshToken})
+}
+
+func GetListOfUsers(context *gin.Context) {
+	searchParam := context.Query("search")
+	pageParam := context.DefaultQuery("page", "1")
+	pageSizeParam := context.DefaultQuery("pageSize", "2")
+
+	users, err := model.GetUsersWithParam(searchParam)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	role, err := auth.GetRoleFromToken(context)
+	if err != nil || role == 0 {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed at receiving the role"})
+		return
+	}
+
+	users = model.FilterUsersByRole(users, role)
+
+	pageSize, err := strconv.Atoi(pageSizeParam)
+	if err != nil || pageSize > len(users) {
+		context.JSON(http.StatusOK, gin.H{"users": users})
+		return
+	}
+
+	page, err := strconv.Atoi(pageParam)
+	if err != nil || page*pageSize > len(users) {
+		context.JSON(http.StatusOK, gin.H{"users": users})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"users": users[(page-1)*pageSize : page*pageSize], "totalPages": uint(len(users) / pageSize)})
+}
+
+func GetUserById(context *gin.Context) {
+	idParam := context.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := model.GetUserById(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	role, err := auth.GetRoleFromToken(context)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if user.RoleID < role {
+		context.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("The user is inaccessible with the id: %d", user.ID)})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"id": user.ID, "firstName": user.FirstName, "lastName": user.LastName, "role": user.RoleID, "email": user.Email})
+}
+
+func UpdateUser(context *gin.Context) {
+	var input model.DraftUserPayload
+
+	if err := context.ShouldBindJSON(&input); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	idParam := context.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := model.GetUserById(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	role, err := auth.GetRoleFromToken(context)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if user.RoleID < role {
+		context.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("The user is inaccessible with the id: %d", user.ID)})
+		return
+	}
+
+	roleID, err := strconv.Atoi(input.RoleID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	user = model.User{
+		ID:        user.ID,
+		RoleID:    uint(roleID),
+		FirstName: input.FirstName,
+		LastName:  input.LastName,
+		Email:     input.Email,
+		Username:  user.Username,
+		Password:  user.Password,
+	}
+	err = model.UpdateUser(user)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	context.JSON(http.StatusNoContent, gin.H{})
+}
+
+func DeleteUser(context *gin.Context) {
+	idParam := context.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := model.GetUserById(uint(id))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			context.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	role, err := auth.GetRoleFromToken(context)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if user.RoleID < role {
+		context.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("The user is inaccessible with the id: %d", user.ID)})
+		return
+	}
+
+	err = model.DeleteUser(user)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	context.JSON(http.StatusNoContent, gin.H{})
 }

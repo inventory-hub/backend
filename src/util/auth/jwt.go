@@ -98,6 +98,19 @@ func CurrentUser(param interface{}) model.User {
 	return user
 }
 
+func GetRoleFromToken(context *gin.Context) (uint, error) {
+	token, err := getToken(context)
+	if err != nil {
+		return 0, err
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	role := uint(claims["role"].(float64))
+	if ok && token.Valid {
+		return role, nil
+	}
+	return 0, errors.New("invalid token provided")
+}
+
 // check token validity
 func getToken(param interface{}) (*jwt.Token, error) {
 	var tokenString string

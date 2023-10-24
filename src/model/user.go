@@ -45,6 +45,22 @@ func (user *User) ValidateUserPassword(password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 }
 
+func UpdateUser(user User) error {
+	err := database.DB.Omit("password").Updates(&user).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DeleteUser(user User) error {
+	err := database.DB.Delete(&user).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func GetUserByUsername(username string) (User, error) {
 	var user User
 	err := database.DB.Where("username = ?", username).Find(&user).Error
@@ -72,11 +88,21 @@ func GetUserById(id uint) (User, error) {
 	return user, nil
 }
 
-func GetUsersWithParam(search string) (*[]User, error) {
-	var users *[]User
-	err := database.DB.Where("username = ?", "calin").Find(&users).Error
+func GetUsersWithParam(search string) ([]User, error) {
+	var users []User
+	err := database.DB.Where("first_name = ?", search).Find(&users).Error
 	if err != nil {
-		return &[]User{}, err
+		return []User{}, err
 	}
 	return users, nil
+}
+
+func FilterUsersByRole(users []User, role uint) []User {
+	var filteredUsers []User
+	for i := 0; i < len(users); i++ {
+		if users[i].RoleID == role {
+			filteredUsers = append(filteredUsers, users[i])
+		}
+	}
+	return filteredUsers
 }
