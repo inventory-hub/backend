@@ -58,7 +58,7 @@ func loadDatabase() {
 func loadService() {
 	// Connect to Azure Storage Queue
 	msgqueue.GetServiceClient(os.Getenv("AZURE_QUEUE_CONNECTION_STRING"))
-	msgqueue.GetQueueClient(os.Getenv("AZURE_QUEUE_NAME"))
+	msgqueue.GetQueueClient("invitation-messages")
 	// log.Println(msgqueue.QueueClient.URL())
 }
 
