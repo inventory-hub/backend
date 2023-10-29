@@ -222,6 +222,10 @@ func GetListOfUsers(context *gin.Context) {
 	}
 
 	users = model.FilterUsersByRole(users, role)
+	if users == nil {
+		context.JSON(http.StatusOK, gin.H{"users": []model.User{}})
+		return
+	}
 
 	pageSize, err := strconv.Atoi(pageSizeParam)
 	if err != nil || pageSize > len(users) {

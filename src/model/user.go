@@ -2,6 +2,7 @@ package model
 
 import (
 	"Smart-Machine/backend/src/database"
+	"fmt"
 	"html"
 	"strings"
 
@@ -90,7 +91,8 @@ func GetUserById(id uint) (User, error) {
 
 func GetUsersWithParam(search string) ([]User, error) {
 	var users []User
-	err := database.DB.Where("first_name = ?", search).Find(&users).Error
+	search = fmt.Sprintf("%%%s%%", search)
+	err := database.DB.Where("first_name LIKE ?", search).Or("last_name LIKE ?", search).Or("username LIKE ?", search).Or("email LIKE ?", search).Find(&users).Error
 	if err != nil {
 		return []User{}, err
 	}
