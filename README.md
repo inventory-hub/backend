@@ -308,15 +308,19 @@ Example success response:
   "users": [
     {
       "id": "<id>",
+      "username": "john_admin88",
       "firstName": "John",
       "lastName": "Admin",
-      "role": "Admin"
+      "role": "Admin",
+      "createdAt": "2021-01-01T00:00:00.000Z"
     },
     {
       "id": "<id>",
+      "username": "john_manager88",
       "firstName": "John",
       "lastName": "Doe",
-      "role": "ReadonlyUser"
+      "role": "ReadonlyUser",
+      "createdAt": "2021-01-01T00:00:00.000Z"
     }
   ],
   "totalPages": 1
@@ -344,10 +348,12 @@ Example success response:
 ```json
 {
   "id": "<id>",
+  "username": "john_admin88",
   "firstName": "John",
   "lastName": "Admin",
   "role": "Admin",
-  "email": "john.admin@example.com"
+  "email": "john.admin@example.com",
+  "createdAt": "2021-01-01T00:00:00.000Z"
 }
 ```
 
