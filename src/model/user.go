@@ -5,21 +5,25 @@ import (
 	"fmt"
 	"html"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type User struct {
-	gorm.Model
-	ID        uint   `gorm:"primary_key"`
-	RoleID    uint   `gorm:"not null;DEFAULT:3" json:"roleId"`
-	FirstName string `gorm:"size:255;not null;" json:"firstName"`
-	LastName  string `gorm:"size:255;not null;" json:"lastName"`
-	Username  string `gorm:"size:255;not null;" json:"username"`
-	Email     string `gorm:"size:255;not null;unique" json:"email"`
-	Password  string `gorm:"size:255;not null" json:"-"`
-	Role      Role   `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
+	ID        uint           `gorm:"primary_key" json:"id"`
+	Username  string         `gorm:"size:255;not null;" json:"username"`
+	FirstName string         `gorm:"size:255;not null;" json:"firstName"`
+	LastName  string         `gorm:"size:255;not null;" json:"lastName"`
+	Email     string         `gorm:"size:255;not null;unique" json:"email"`
+	RoleName  string         `gorm:"size:255;not null" json:"role"`
+	CreatedAt time.Time      `gorm:"column:created_at" json:"createdAt"`
+	UpdatedAt time.Time      `gorm:"column:updated_at" json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at" json:"deletedAt"`
+	Password  string         `gorm:"size:255;not null" json:"-"`
+	RoleID    uint           `gorm:"not null;DEFAULT:3" json:"-"`
+	Role      Role           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"-"`
 }
 
 func (user *User) Save() (*User, error) {
@@ -99,10 +103,10 @@ func GetUsersWithParam(search string) ([]User, error) {
 	return users, nil
 }
 
-func FilterUsersByRole(users []User, role uint) []User {
+func FilterUsersByRoleId(users []User, roleId uint) []User {
 	var filteredUsers []User
 	for i := 0; i < len(users); i++ {
-		if users[i].RoleID >= role {
+		if users[i].RoleID >= roleId {
 			filteredUsers = append(filteredUsers, users[i])
 		}
 	}

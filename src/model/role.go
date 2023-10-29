@@ -14,6 +14,13 @@ type Role struct {
 	Description string `gorm:"size:255;not null" json:"description"`
 }
 
+var RoleMap = map[string]uint{
+	"Admin":        1,
+	"Manager":      2,
+	"User":         3,
+	"ReadonlyUser": 4,
+}
+
 // Create a role
 func CreateRole(Role *Role) (err error) {
 	err = database.DB.Create(Role).Error

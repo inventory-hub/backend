@@ -109,17 +109,12 @@ func Invite(context *gin.Context) {
 		return
 	}
 
-	roleId, err := strconv.Atoi(input.RoleID)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
 	user = model.DraftUser{
 		Email:     input.Email,
 		FirstName: input.FirstName,
 		LastName:  input.LastName,
-		RoleID:    uint(roleId),
+		RoleName:  input.Role,
+		RoleID:    model.RoleMap[input.Role],
 	}
 
 	inviteToken, err := random.PseudoUUID()
@@ -172,6 +167,7 @@ func Register(context *gin.Context) {
 
 	user := model.User{
 		RoleID:    draftUser.RoleID,
+		RoleName:  draftUser.RoleName,
 		FirstName: draftUser.FirstName,
 		LastName:  draftUser.LastName,
 		Username:  input.Username,
@@ -215,13 +211,13 @@ func GetListOfUsers(context *gin.Context) {
 		return
 	}
 
-	role, err := auth.GetRoleFromToken(context)
-	if err != nil || role == 0 {
+	roleId, err := auth.GetRoleFromToken(context)
+	if err != nil || roleId == 0 {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed at receiving the role"})
 		return
 	}
 
-	users = model.FilterUsersByRole(users, role)
+	users = model.FilterUsersByRoleId(users, roleId)
 	if users == nil {
 		context.JSON(http.StatusOK, gin.H{"users": []model.User{}})
 		return
@@ -261,13 +257,13 @@ func GetUserById(context *gin.Context) {
 		return
 	}
 
-	role, err := auth.GetRoleFromToken(context)
+	roleId, err := auth.GetRoleFromToken(context)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if user.RoleID < role {
+	if user.RoleID < roleId {
 		context.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("The user is inaccessible with the id: %d", user.ID)})
 		return
 	}
@@ -312,14 +308,10 @@ func UpdateUser(context *gin.Context) {
 		return
 	}
 
-	roleID, err := strconv.Atoi(input.RoleID)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	}
-
 	user = model.User{
 		ID:        user.ID,
-		RoleID:    uint(roleID),
+		RoleID:    model.RoleMap[input.Role],
+		RoleName:  input.Role,
 		FirstName: input.FirstName,
 		LastName:  input.LastName,
 		Email:     input.Email,
