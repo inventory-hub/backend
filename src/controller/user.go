@@ -268,7 +268,7 @@ func GetUserById(context *gin.Context) {
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"id": user.ID, "firstName": user.FirstName, "lastName": user.LastName, "role": user.RoleID, "email": user.Email})
+	context.JSON(http.StatusOK, gin.H{"id": user.ID, "firstName": user.FirstName, "lastName": user.LastName, "role": user.RoleName, "email": user.Email})
 }
 
 func UpdateUser(context *gin.Context) {
