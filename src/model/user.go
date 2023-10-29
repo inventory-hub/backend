@@ -100,7 +100,7 @@ func GetUsersWithParam(search string) ([]User, error) {
 func FilterUsersByRole(users []User, role uint) []User {
 	var filteredUsers []User
 	for i := 0; i < len(users); i++ {
-		if users[i].RoleID == role {
+		if users[i].RoleID >= role {
 			filteredUsers = append(filteredUsers, users[i])
 		}
 	}

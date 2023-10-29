@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ValidateAuthorization(roleList []uint) gin.HandlerFunc {
+func ValidateAuthorizationMiddleware(roleList []uint) gin.HandlerFunc {
 	return func(context *gin.Context) {
 		err := auth.ValidateJWTWithRole(context, roleList)
 		if err != nil {

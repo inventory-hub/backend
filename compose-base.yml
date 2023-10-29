@@ -22,7 +22,9 @@ services:
     ports:
       - 5432:5432
     networks:
-      - fullstack
+      fullstack:
+        aliases:
+          - postgres
     restart: unless-stopped
 
 
@@ -40,5 +42,7 @@ services:
       - 10001:10001
       - 10002:10002
     networks:
-      - fullstack
+      fullstack:
+        aliases:
+          - azurite
     restart: unless-stopped
