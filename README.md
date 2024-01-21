@@ -2,6 +2,10 @@
 
 Main backend for inventory hub application
 
+## DISCLAIMER
+
+The code in this repository is obsolete. The documentation is still somewhat accurate and usable.
+
 ## Table of Contents
 
 - [Setup](#setup)
